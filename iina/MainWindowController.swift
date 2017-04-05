@@ -66,6 +66,7 @@ class MainWindowController: NSWindowController, NSWindowDelegate {
   var hideOSDTimer: Timer?
   
   var screens: [NSScreen] = []
+  var totalScreens = 0;
   var blackWindowControllers: [NSWindowController] = []
 
   // MARK: - Status
@@ -361,8 +362,17 @@ class MainWindowController: NSWindowController, NSWindowDelegate {
         self.setWindowFloatingOnTop(ontop)
       }
     }
+    let screenChangeObserver = NotificationCenter.default.addObserver(forName: NSNotification.Name.NSApplicationDidChangeScreenParameters, object: nil, queue: .main) { [unowned self] _ in
+      if NSScreen.screens()?.count ?? 0 != self.totalScreens {
+        if self.isInFullScreen && self.ud.bool(forKey: PK.blackOutMonitor) {
+          self.removeBlackWindow()
+          self.blackOutOtherMonitors()
+        }
+      }
+    }
     notificationObservers.append(fsObserver)
     notificationObservers.append(ontopObserver)
+    notificationObservers.append(screenChangeObserver)
   }
 
   deinit {
@@ -1374,6 +1384,8 @@ class MainWindowController: NSWindowController, NSWindowDelegate {
   
   func blackOutOtherMonitors() {
     screens = (NSScreen.screens()?.filter() { $0 != NSScreen.main() }) ?? []
+    totalScreens = screens.count + 1
+
     blackWindowControllers = []
     
     for screen in screens {
